@@ -5,10 +5,10 @@ import (
 	"math/big"
 )
 
-// Log returns a big.Float representation of the natural logarithm of
-// z. Precision is the same as the one of the argument. The function
-// panics if z is negative, returns -Inf when z = 0, and +Inf when z =
-// +Inf
+// Log returns a big.Float representation of ln(z), aka the natural
+// logarithm of z. Precision is the same as the one of the argument.
+// The function panics if z is negative, returns -Inf when z = 0, and
+// +Inf when z = +Inf
 func Log(z *big.Float) *big.Float {
 
 	// panic on negative z

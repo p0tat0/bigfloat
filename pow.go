@@ -2,9 +2,9 @@ package bigfloat
 
 import "math/big"
 
-// Pow returns a big.Float representation of z**w. Precision is the same as the one
-// of the first argument. The function panics when z is negative and w is
-// not an integer.
+// Pow returns a big.Float representation of zʷ. Precision is the same
+// as the one of the first argument. The function panics when z is
+// negative and w is not an integer.
 func Pow(z *big.Float, w *big.Float) *big.Float {
 
 	if z.Sign() < 0 {

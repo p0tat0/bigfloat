@@ -1,9 +1,8 @@
-Package bigfloat provides arbitrary-precision natural logarithm and
-exponentiation for the standard library's `big.Float` type.
+Package bigfloat provides arbitrary-precision natural logarithm (Log),
+and exponentiation (Exp, and Pow) functions for the standard library's
+`big.Float` type.
 
 [![GoDoc](https://godoc.org/github.com/ALTree/bigfloat?status.png)](https://godoc.org/github.com/ALTree/bigfloat)
-
-The package requires Go 1.10 or newer.
 
 #### Example
 

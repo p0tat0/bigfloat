@@ -5,9 +5,9 @@ import (
 	"math/big"
 )
 
-// Exp returns a big.Float representation of exp(z). Precision is
-// the same as the one of the argument. The function returns +Inf
-// when z = +Inf, and 0 when z = -Inf.
+// Exp returns a big.Float representation of eᶻ, aka exp(z). Precision
+// is the same as the one of the argument. Returns +Inf when z = +Inf,
+// and 0 when z = -Inf.
 func Exp(z *big.Float) *big.Float {
 
 	// exp(0) == 1
