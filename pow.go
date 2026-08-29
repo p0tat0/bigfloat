@@ -42,7 +42,7 @@ func Pow(z *big.Float, w *big.Float) *big.Float {
 		return x.Quo(big.NewFloat(1), Pow(zExt, wNeg)).SetPrec(z.Prec())
 	}
 
-	// compute w**z as exp(z log(w))
+	// compute z**w as exp(w log(z))
 	x := new(big.Float).SetPrec(z.Prec() + 64)
 	logZ := Log(new(big.Float).Copy(z).SetPrec(z.Prec() + 64))
 	x.Mul(w, logZ)
