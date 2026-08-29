@@ -118,3 +118,131 @@ func BenchmarkExp(b *testing.B) {
 		})
 	}
 }
+
+// expOracle returns eˣ to prec bits without seeding from a float64:
+// e = Exp(1) at prec+64 bits (a small argument, whose seed is exact)
+// raised to ⌊x⌋ by binary exponentiation, times Exp of the fractional
+// part in [0, 1). It is independent of the float64 seed path for
+// every |x| ≥ 1, and so can judge it. e is computed once per working
+// precision.
+func expOracle(x *big.Float, prec uint) *big.Float {
+	work := prec + 64
+	e, ok := oracleE[work]
+	if !ok {
+		e = bigfloat.Exp(big.NewFloat(1).SetPrec(work))
+		oracleE[work] = e
+	}
+
+	floor := new(big.Float).SetPrec(work)
+	n, acc := x.Int64()
+	if acc == big.Above { // x negative, non-integer: round toward -Inf
+		n--
+	}
+	floor.SetInt64(n)
+	frac := new(big.Float).SetPrec(work).Sub(x, floor)
+
+	// e^|n| by right-to-left binary exponentiation
+	pow := big.NewFloat(1).SetPrec(work)
+	base := new(big.Float).Copy(e)
+	for k := n; k != 0; k /= 2 {
+		if k < 0 {
+			k = -k
+		}
+		if k%2 == 1 {
+			pow.Mul(pow, base)
+		}
+		if k > 1 {
+			base.Mul(base, base)
+		}
+	}
+	if n < 0 {
+		pow.Quo(big.NewFloat(1).SetPrec(work), pow)
+	}
+	pow.Mul(pow, bigfloat.Exp(frac))
+	return pow.SetPrec(prec)
+}
+
+var oracleE = map[uint]*big.Float{}
+
+// ulpDistance returns |got − want| in units of the last place of want
+// at want's precision.
+func ulpDistance(got, want *big.Float) float64 {
+	diff := new(big.Float).Sub(got, want)
+	diff.Abs(diff)
+	if diff.Sign() == 0 {
+		return 0
+	}
+	mant := new(big.Float)
+	exp := want.MantExp(mant) // want = mant · 2^exp, 0.5 ≤ mant < 1
+	ulp := new(big.Float).SetMantExp(big.NewFloat(1), exp-int(want.Prec()))
+	r, _ := diff.Quo(diff, ulp).Float64()
+	return r
+}
+
+// TestExpBands scans the arguments whose float64 seed math.Exp(x) is
+// subnormal, x ∈ (−745.13, −708.4), and the ranges the halving
+// reduction maps onto it, [−1490, −1417] and [−2980, −2834]: a seed
+// with fewer than 53 correct bits used to be trusted for 53, giving
+// Exp(−745) with a 23 % error at 53 bits and a wrong 15th digit at 200.
+// Every integer in [−4000, 4000] is scanned, which covers the three
+// ranges; quarter steps are added across the worst 50 of each, where
+// the error is largest. The oracle is reference-free (expOracle).
+func TestExpBands(t *testing.T) {
+	var points []*big.Float
+	for n := -4000; n <= 4000; n++ {
+		points = append(points, big.NewFloat(float64(n)))
+	}
+	for _, band := range [][2]float64{{-2985, -2935}, {-1495, -1445}, {-750, -700}} {
+		for x := band[0]; x <= band[1]; x += 0.25 {
+			if x == math.Trunc(x) {
+				continue
+			}
+			points = append(points, big.NewFloat(x))
+		}
+	}
+
+	const tolerance = 4.0
+	for _, prec := range []uint{53, 117, 200} {
+		bad := 0
+		for _, p := range points {
+			z := new(big.Float).SetPrec(prec).Set(p)
+			got := bigfloat.Exp(z)
+			want := expOracle(z, prec)
+			if d := ulpDistance(got, want); d > tolerance {
+				bad++
+				if bad <= 10 {
+					t.Errorf("prec = %d, Exp(%v) = %.20g, want %.20g (%.3g ulp)", prec, p, got, want, d)
+				}
+			}
+		}
+		if bad > 10 {
+			t.Errorf("prec = %d: %d bad points in total", prec, bad)
+		}
+	}
+}
+
+// TestExpSubnormalSeed pins three points inside the band, from the
+// oracle at 300 bits; each is compared at the precision its digits
+// support. Exp(−745) has a single correct seed bit.
+func TestExpSubnormalSeed(t *testing.T) {
+	for _, test := range []struct {
+		z    string
+		want string
+		bits uint
+	}{
+		{"-745", "2.822350730471937076353440082059782620824363e-324", 128},
+		{"-745.13", "2.47829328088271661447576705969e-324", 96},
+		{"-1490", "7.96566364579547680414311931e-648", 80},
+	} {
+		z := new(big.Float).SetPrec(200)
+		z.Parse(test.z, 10)
+		got := bigfloat.Exp(z).SetPrec(test.bits)
+
+		want := new(big.Float).SetPrec(test.bits)
+		want.Parse(test.want, 10)
+
+		if d := ulpDistance(got, want); d > 1 {
+			t.Errorf("Exp(%v) =\ngot  %.40g;\nwant %.40g (%.3g ulp at %d bits)", test.z, got, want, d, test.bits)
+		}
+	}
+}
