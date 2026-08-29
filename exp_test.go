@@ -123,10 +123,15 @@ func BenchmarkExp(b *testing.B) {
 // e = Exp(1) at prec+64 bits (a small argument, whose seed is exact)
 // raised to ⌊x⌋ by binary exponentiation, times Exp of the fractional
 // part in [0, 1). It is independent of the float64 seed path for
-// every |x| ≥ 1, and so can judge it.
+// every |x| ≥ 1, and so can judge it. e is computed once per working
+// precision.
 func expOracle(x *big.Float, prec uint) *big.Float {
 	work := prec + 64
-	e := bigfloat.Exp(big.NewFloat(1).SetPrec(work))
+	e, ok := oracleE[work]
+	if !ok {
+		e = bigfloat.Exp(big.NewFloat(1).SetPrec(work))
+		oracleE[work] = e
+	}
 
 	floor := new(big.Float).SetPrec(work)
 	n, acc := x.Int64()
@@ -157,6 +162,8 @@ func expOracle(x *big.Float, prec uint) *big.Float {
 	return pow.SetPrec(prec)
 }
 
+var oracleE = map[uint]*big.Float{}
+
 // ulpDistance returns |got − want| in units of the last place of want
 // at want's precision.
 func ulpDistance(got, want *big.Float) float64 {
@@ -177,8 +184,9 @@ func ulpDistance(got, want *big.Float) float64 {
 // reduction maps onto it, [−1490, −1417] and [−2980, −2834]: a seed
 // with fewer than 53 correct bits used to be trusted for 53, giving
 // Exp(−745) with a 23 % error at 53 bits and a wrong 15th digit at 200.
-// Integers in [−4000, 4000] cover the rest; quarter steps cover the
-// bands. The oracle is reference-free (expOracle).
+// Every integer in [−4000, 4000] is scanned, which covers the three
+// ranges; quarter steps are added across the worst 50 of each, where
+// the error is largest. The oracle is reference-free (expOracle).
 func TestExpBands(t *testing.T) {
 	var points []*big.Float
 	for n := -4000; n <= 4000; n++ {
