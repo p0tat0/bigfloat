@@ -108,7 +108,9 @@ func pi(prec uint) *big.Float {
 }
 
 // returns an approximate (to precision dPrec) solution to
-//    f(t) = 0
+//
+//	f(t) = 0
+//
 // using the Newton Method.
 // fOverDf needs to be a fuction returning f(t)/f'(t).
 // t must not be changed by fOverDf.
