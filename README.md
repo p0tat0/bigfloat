@@ -2,7 +2,7 @@ Package bigfloat provides arbitrary-precision natural logarithm (Log),
 and exponentiation (Exp, and Pow) functions for the standard library's
 `big.Float` type.
 
-[![GoDoc](https://godoc.org/github.com/ALTree/bigfloat?status.png)](https://godoc.org/github.com/ALTree/bigfloat)
+[![GoDoc](https://godoc.org/github.com/p0tat0/bigfloat?status.png)](https://godoc.org/github.com/p0tat0/bigfloat)
 
 #### Example
 
@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ALTree/bigfloat"
+	"github.com/p0tat0/bigfloat"
 )
 
 // We'll compute the value of the transcendental number 2^√2, also
@@ -36,4 +36,4 @@ gsc = 2.665144142690225188650297249873139848274211313714659492835980
 
 #### Documentation
 
-See https://godoc.org/github.com/ALTree/bigfloat
+See https://godoc.org/github.com/p0tat0/bigfloat
