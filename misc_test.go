@@ -2,6 +2,7 @@ package bigfloat
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 	"testing"
 )
@@ -80,5 +81,65 @@ func BenchmarkPi(b *testing.B) {
 				pi(prec)
 			}
 		})
+	}
+}
+
+// TestAddSubBoundary checks add and sub against math/big on both sides
+// of the negligible threshold, including x at the bottom of its binade,
+// where the ulp below x is half the ulp above.
+func TestAddSubBoundary(t *testing.T) {
+	modes := []big.RoundingMode{big.ToNearestEven, big.ToNearestAway, big.ToZero}
+	for _, p := range []uint{1, 2, 53, 64, 130} {
+		mants := []*big.Float{big.NewFloat(0.5)}
+		if p > 1 {
+			top := new(big.Float).SetMantExp(big.NewFloat(1), -int(p))
+			mants = append(mants, big.NewFloat(0.75), top.Sub(big.NewFloat(1), top))
+		}
+		for _, zp := range []uint{p, p + 7, max(p-1, 1)} {
+			for _, mode := range modes {
+				for _, xm := range mants {
+					for _, ym := range mants {
+						for ey := -int(p) - 6; ey <= -int(p)+1; ey++ {
+							for _, sx := range []float64{1, -1} {
+								for _, sy := range []float64{1, -1} {
+									x := new(big.Float).SetPrec(p).SetMantExp(xm, 3)
+									x.Mul(x, big.NewFloat(sx))
+									y := new(big.Float).SetPrec(p).SetMantExp(ym, 3+ey)
+									y.Mul(y, big.NewFloat(sy))
+									for _, op := range []struct {
+										name      string
+										got, want func(z, x, y *big.Float) *big.Float
+									}{
+										{"add", add, (*big.Float).Add},
+										{"sub", sub, (*big.Float).Sub},
+									} {
+										got := op.got(new(big.Float).SetPrec(zp).SetMode(mode), x, y)
+										want := op.want(new(big.Float).SetPrec(zp).SetMode(mode), x, y)
+										if got.Cmp(want) != 0 || got.Prec() != want.Prec() {
+											t.Errorf("%s(%v, %g, %g) at prec %d = %g, want %g", op.name, mode, x, y, zp, got, want)
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestAddSubSpecialOperands(t *testing.T) {
+	tiny := new(big.Float).SetMantExp(big.NewFloat(0.5), -1000)
+	for _, v := range [][2]*big.Float{
+		{big.NewFloat(0), tiny},
+		{big.NewFloat(0x1p100), big.NewFloat(math.Inf(-1))},
+	} {
+		if got, want := add(new(big.Float).SetPrec(53), v[0], v[1]), new(big.Float).SetPrec(53).Add(v[0], v[1]); got.Cmp(want) != 0 {
+			t.Errorf("add(%g, %g) = %g, want %g", v[0], v[1], got, want)
+		}
+		if got, want := sub(new(big.Float).SetPrec(53), v[0], v[1]), new(big.Float).SetPrec(53).Sub(v[0], v[1]); got.Cmp(want) != 0 {
+			t.Errorf("sub(%g, %g) = %g, want %g", v[0], v[1], got, want)
+		}
 	}
 }

@@ -26,11 +26,11 @@ func agm(a, b *big.Float) *big.Float {
 	lim.SetMantExp(big.NewFloat(1).SetPrec(prec+64), -int(prec+1))
 
 	half := big.NewFloat(0.5)
-	t := new(big.Float)
+	t := new(big.Float).SetPrec(prec + 64)
 
-	for t.Sub(a2, b2).Cmp(lim) != -1 {
+	for sub(t, a2, b2).Cmp(lim) != -1 {
 		t.Copy(a2)
-		a2.Add(a2, b2).Mul(a2, half)
+		add(a2, a2, b2).Mul(a2, half)
 		b2.Sqrt(b2.Mul(b2, t))
 	}
 
@@ -121,10 +121,44 @@ func newton(fOverDf func(z *big.Float) *big.Float, guess *big.Float, dPrec uint)
 	guess.SetPrec(prec + guard)
 
 	for prec < 2*dPrec {
-		guess.Sub(guess, fOverDf(guess))
+		sub(guess, guess, fOverDf(guess))
 		prec *= 2
 		guess.SetPrec(prec + guard)
 	}
 
 	return guess.SetPrec(dPrec)
+}
+
+// add sets z to the value of z.Add(x, y), though not its Accuracy.
+// math/big aligns the operands by shifting across their whole exponent
+// gap, so add skips that work when y cannot change the rounded result.
+func add(z, x, y *big.Float) *big.Float {
+	if negligible(z, x, y) {
+		return z.Set(x)
+	}
+	return z.Add(x, y)
+}
+
+// sub sets z = x - y like z.Sub(x, y); see add.
+func sub(z, x, y *big.Float) *big.Float {
+	if negligible(z, x, y) {
+		return z.Set(x)
+	}
+	return z.Sub(x, y)
+}
+
+// negligible reports whether x ± y rounds to x at z's precision: x is
+// exact there and |y| < ulp(x)/4, which is still under half an ulp when
+// x ± y drops into the binade below.
+func negligible(z, x, y *big.Float) bool {
+	if x.Sign() == 0 || y.IsInf() {
+		return false
+	}
+	if m := z.Mode(); m != big.ToNearestEven && m != big.ToNearestAway {
+		return false
+	}
+	if z.Prec() < x.Prec() {
+		return false
+	}
+	return y.MantExp(nil) <= x.MantExp(nil)-int(z.Prec())-2
 }

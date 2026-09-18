@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/big"
 	"math/rand"
+	"runtime"
 	"testing"
 
 	"github.com/p0tat0/bigfloat"
@@ -243,6 +244,32 @@ func TestExpSubnormalSeed(t *testing.T) {
 
 		if d := ulpDistance(got, want); d > 1 {
 			t.Errorf("Exp(%v) =\ngot  %.40g;\nwant %.40g (%.3g ulp at %d bits)", test.z, got, want, d, test.bits)
+		}
+	}
+}
+
+// allocatedBytes returns the heap bytes f allocates. An exponent gap that
+// reaches math/big's operand alignment costs about gap/8 bytes.
+func allocatedBytes(f func()) uint64 {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	before := m.TotalAlloc
+	f()
+	runtime.ReadMemStats(&m)
+	return m.TotalAlloc - before
+}
+
+// TestExpTinyArgument: Newton's first correction is −z itself, 2^30
+// binades below the seed 1.
+func TestExpTinyArgument(t *testing.T) {
+	for _, sign := range []float64{1, -1} {
+		z := new(big.Float).SetPrec(53).SetMantExp(big.NewFloat(sign), -(1 << 30))
+		var got *big.Float
+		if n := allocatedBytes(func() { got = bigfloat.Exp(z) }); n > 1<<20 {
+			t.Errorf("Exp(%g·2^-2^30) allocated %d bytes", sign, n)
+		}
+		if got.Cmp(big.NewFloat(1)) != 0 {
+			t.Errorf("Exp(%g·2^-2^30) = %g, want 1", sign, got)
 		}
 	}
 }
