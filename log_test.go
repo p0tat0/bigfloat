@@ -112,3 +112,20 @@ func BenchmarkLog(b *testing.B) {
 		})
 	}
 }
+
+// TestLogExtremeExponent: the AGM starts from 1 and 4/x, 2^30 binades
+// apart.
+func TestLogExtremeExponent(t *testing.T) {
+	ln2 := bigfloat.Log(new(big.Float).SetPrec(200).SetInt64(2))
+	for _, e := range []int{1 << 30, -(1 << 30)} {
+		z := new(big.Float).SetPrec(53).SetMantExp(big.NewFloat(1), e)
+		var got *big.Float
+		if n := allocatedBytes(func() { got = bigfloat.Log(z) }); n > 1<<20 {
+			t.Errorf("Log(2^%d) allocated %d bytes", e, n)
+		}
+		want := new(big.Float).SetPrec(200).Mul(ln2, big.NewFloat(float64(e)))
+		if d := ulpDistance(got, want.SetPrec(53)); d > 1 {
+			t.Errorf("Log(2^%d) = %g, want %g (%.3g ulp)", e, got, want, d)
+		}
+	}
+}

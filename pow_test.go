@@ -169,3 +169,15 @@ func BenchmarkPow(b *testing.B) {
 		})
 	}
 }
+
+func TestPowExtremeExponent(t *testing.T) {
+	z := new(big.Float).SetPrec(53).SetMantExp(big.NewFloat(1), -(1 << 30))
+	var got *big.Float
+	if n := allocatedBytes(func() { got = bigfloat.Pow(z, big.NewFloat(0.5)) }); n > 1<<20 {
+		t.Errorf("Pow(2^-2^30, 0.5) allocated %d bytes", n)
+	}
+	want := new(big.Float).SetMantExp(big.NewFloat(1), -(1 << 29))
+	if d := ulpDistance(got, want); d > 1 {
+		t.Errorf("Pow(2^-2^30, 0.5) = %g, want 2^-2^29 (%.3g ulp)", got, d)
+	}
+}
