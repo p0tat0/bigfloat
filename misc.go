@@ -129,7 +129,7 @@ func newton(fOverDf func(z *big.Float) *big.Float, guess *big.Float, dPrec uint)
 	return guess.SetPrec(dPrec)
 }
 
-// add sets z to the value of z.Add(x, y), though not its Accuracy.
+// add sets z to the value of z.Add(x, y); its Accuracy may differ.
 // math/big aligns the operands by shifting across their whole exponent
 // gap, so add skips that work when y cannot change the rounded result.
 func add(z, x, y *big.Float) *big.Float {
@@ -147,9 +147,9 @@ func sub(z, x, y *big.Float) *big.Float {
 	return z.Sub(x, y)
 }
 
-// negligible reports whether x ± y rounds to x at z's precision: x is
-// exact there and |y| < ulp(x)/4, which is still under half an ulp when
-// x ± y drops into the binade below.
+// negligible reports whether x ± y rounds to x at z's precision: x's
+// value is representable there and |y| < ulp(x)/4, still under half an
+// ulp when x ± y drops into the binade below.
 func negligible(z, x, y *big.Float) bool {
 	if x.Sign() == 0 || y.IsInf() {
 		return false

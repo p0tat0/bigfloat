@@ -92,7 +92,7 @@ func TestAddSubBoundary(t *testing.T) {
 	for _, p := range []uint{1, 2, 53, 64, 130} {
 		mants := []*big.Float{big.NewFloat(0.5)}
 		if p > 1 {
-			top := new(big.Float).SetMantExp(big.NewFloat(1), -int(p))
+			top := new(big.Float).SetPrec(p).SetMantExp(big.NewFloat(1), -int(p))
 			mants = append(mants, big.NewFloat(0.75), top.Sub(big.NewFloat(1), top))
 		}
 		for _, zp := range []uint{p, p + 7, max(p-1, 1)} {
