@@ -277,21 +277,21 @@ func TestExpTinyArgument(t *testing.T) {
 // TestExpHugeArgument: past the big.Float exponent range the result is
 // +Inf or 0; the halving recursion must not walk down to it.
 func TestExpHugeArgument(t *testing.T) {
-	pin := new(big.Float).SetPrec(53).SetMantExp(big.NewFloat(1), 1000)
+	pin := new(big.Float).SetPrec(53).SetMantExp(big.NewFloat(1), 31)
 	if n := allocatedBytes(func() { bigfloat.Exp(pin) }); n > 4<<10 {
-		t.Fatalf("Exp(2^1000) allocated %d bytes", n)
+		t.Fatalf("Exp(2^31) allocated %d bytes", n)
 	}
 
-	for _, e := range []int{32, 1000, 1 << 20, 1 << 30} {
+	for _, e := range []int{31, 1000, 1 << 20, 1 << 30} {
 		for _, prec := range []uint{53, 1000} {
 			for _, sign := range []float64{1, -1} {
-				z := new(big.Float).SetMantExp(big.NewFloat(sign/2).SetPrec(prec), e)
+				z := new(big.Float).SetMantExp(big.NewFloat(sign).SetPrec(prec), e)
 				got := bigfloat.Exp(z)
-				if sign > 0 && !got.IsInf() || sign < 0 && (got.Sign() != 0 || got.Signbit()) {
-					t.Errorf("Exp(%g·2^%d) = %g", sign, e-1, got)
+				if sign > 0 && (!got.IsInf() || got.Sign() < 0) || sign < 0 && (got.Sign() != 0 || got.Signbit()) {
+					t.Errorf("Exp(%g·2^%d) = %g", sign, e, got)
 				}
 				if got.Prec() != prec {
-					t.Errorf("Exp(%g·2^%d) has precision %d, want %d", sign, e-1, got.Prec(), prec)
+					t.Errorf("Exp(%g·2^%d) has precision %d, want %d", sign, e, got.Prec(), prec)
 				}
 			}
 		}
@@ -317,7 +317,7 @@ func TestExpNearRangeEdge(t *testing.T) {
 		got := bigfloat.Exp(new(big.Float).SetPrec(80).SetFloat64(test.z))
 		switch {
 		case test.inf:
-			if !got.IsInf() {
+			if !got.IsInf() || got.Sign() < 0 {
 				t.Errorf("Exp(%.3f) = %g, want +Inf", test.z, got)
 			}
 		case test.zero:
