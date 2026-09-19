@@ -273,3 +273,61 @@ func TestExpTinyArgument(t *testing.T) {
 		}
 	}
 }
+
+// TestExpHugeArgument: past the big.Float exponent range the result is
+// +Inf or 0; the halving recursion must not walk down to it.
+func TestExpHugeArgument(t *testing.T) {
+	pin := new(big.Float).SetPrec(53).SetMantExp(big.NewFloat(1), 31)
+	if n := allocatedBytes(func() { bigfloat.Exp(pin) }); n > 4<<10 {
+		t.Fatalf("Exp(2^31) allocated %d bytes", n)
+	}
+
+	for _, e := range []int{31, 1000, 1 << 20, 1 << 30} {
+		for _, prec := range []uint{53, 1000} {
+			for _, sign := range []float64{1, -1} {
+				z := new(big.Float).SetMantExp(big.NewFloat(sign).SetPrec(prec), e)
+				got := bigfloat.Exp(z)
+				if sign > 0 && (!got.IsInf() || got.Sign() < 0) || sign < 0 && (got.Sign() != 0 || got.Signbit()) {
+					t.Errorf("Exp(%g·2^%d) = %g", sign, e, got)
+				}
+				if got.Prec() != prec {
+					t.Errorf("Exp(%g·2^%d) has precision %d, want %d", sign, e, got.Prec(), prec)
+				}
+			}
+		}
+	}
+}
+
+// TestExpNearRangeEdge: arguments below 2^31 still take the recursion,
+// which decides the overflow and underflow edges.
+func TestExpNearRangeEdge(t *testing.T) {
+	for _, test := range []struct {
+		z       float64
+		inf     bool
+		zero    bool
+		wantExp int
+	}{
+		{1488522235.117, false, false, math.MaxInt32},
+		{1488522235.317, true, false, 0},
+		{-1488522236.503, false, false, math.MinInt32},
+		{-1488522236.703, false, true, 0},
+		{math.MaxInt32, true, false, 0},
+		{-math.MaxInt32, false, true, 0},
+	} {
+		got := bigfloat.Exp(new(big.Float).SetPrec(80).SetFloat64(test.z))
+		switch {
+		case test.inf:
+			if !got.IsInf() || got.Sign() < 0 {
+				t.Errorf("Exp(%.3f) = %g, want +Inf", test.z, got)
+			}
+		case test.zero:
+			if got.Sign() != 0 {
+				t.Errorf("Exp(%.3f) = %g, want 0", test.z, got)
+			}
+		default:
+			if got.IsInf() || got.Sign() == 0 || got.MantExp(nil) != test.wantExp {
+				t.Errorf("Exp(%.3f) = %g, want exponent %d", test.z, got, test.wantExp)
+			}
+		}
+	}
+}

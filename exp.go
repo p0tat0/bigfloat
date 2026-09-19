@@ -30,6 +30,16 @@ func Exp(z *big.Float) *big.Float {
 		return big.NewFloat(0).SetPrec(z.Prec())
 	}
 
+	// |z| >= 2^31 (a MantExp exponent >= 32) is far past MaxExp·ln 2 and
+	// (MinExp-1)·ln 2; below that, the halving recursion is shallow and
+	// decides the edge.
+	if z.MantExp(nil) >= 32 {
+		if z.Sign() > 0 {
+			return new(big.Float).SetPrec(z.Prec()).SetInf(false)
+		}
+		return new(big.Float).SetPrec(z.Prec())
+	}
+
 	guess := new(big.Float)
 
 	// try to get initial estimate using IEEE-754 math
