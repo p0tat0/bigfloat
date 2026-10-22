@@ -143,3 +143,14 @@ func TestAddSubSpecialOperands(t *testing.T) {
 		}
 	}
 }
+
+func TestPiSqrtBands(t *testing.T) {
+	enablePiCache = false
+	defer func() { enablePiCache = true }()
+	for _, prec := range []uint{13420, 26900} {
+		want := pi(prec + 1000).SetPrec(prec)
+		if got := pi(prec); got.Cmp(want) != 0 {
+			t.Errorf("pi(%d) differs from pi(%d) rounded", prec, prec+1000)
+		}
+	}
+}
