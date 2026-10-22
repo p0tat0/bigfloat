@@ -28,10 +28,14 @@ func agm(a, b *big.Float) *big.Float {
 	half := big.NewFloat(0.5)
 	t := new(big.Float).SetPrec(prec + 64)
 
-	for sub(t, a2, b2).Cmp(lim) != -1 {
+	// The difference falls quadratically to the rounding floor; one that
+	// stops falling has reached it.
+	prev := new(big.Float).SetInf(false)
+	for sub(t, a2, b2).Cmp(lim) != -1 && t.Cmp(prev) < 0 {
+		prev.Copy(t)
 		t.Copy(a2)
 		add(a2, a2, b2).Mul(a2, half)
-		b2.Sqrt(b2.Mul(b2, t))
+		b2.Set(sqrtNewton(b2.Mul(b2, t), prec+64))
 	}
 
 	return a2.SetPrec(prec)
@@ -72,7 +76,7 @@ func pi(prec uint) *big.Float {
 
 	half := big.NewFloat(0.5)
 	two := big.NewFloat(2).SetPrec(prec + 64)
-	sqrt2 := new(big.Float).SetPrec(prec + 64).Sqrt(two)
+	sqrt2 := sqrtNewton(two, prec+64)
 
 	a := big.NewFloat(1).SetPrec(prec + 64)               // a = 1
 	b := new(big.Float).SetPrec(prec+64).Mul(sqrt2, half) // b = 1/√2
@@ -85,10 +89,12 @@ func pi(prec uint) *big.Float {
 
 	// temp variables
 	y := new(big.Float)
-	for y.Sub(a, b).Cmp(lim) != -1 { // assume a > b
+	prev := new(big.Float).SetInf(false)
+	for y.Sub(a, b).Cmp(lim) != -1 && y.Cmp(prev) < 0 { // assume a > b
+		prev.Copy(y)
 		y.Copy(a)
-		a.Add(a, b).Mul(a, half) // a = (a+b)/2
-		b.Sqrt(b.Mul(b, y))      // b = √(ab)
+		a.Add(a, b).Mul(a, half)                // a = (a+b)/2
+		b.Set(sqrtNewton(b.Mul(b, y), prec+64)) // b = √(ab)
 
 		y.Sub(a, y)           // y = a - y
 		y.Mul(y, y).Mul(y, x) // y = x(a-y)²

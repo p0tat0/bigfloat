@@ -1,6 +1,6 @@
 Package bigfloat provides arbitrary-precision natural logarithm (Log),
-and exponentiation (Exp, and Pow) functions for the standard library's
-`big.Float` type.
+exponentiation (Exp, and Pow) and correctly rounded square root (Sqrt)
+functions for the standard library's `big.Float` type.
 
 [![GoDoc](https://godoc.org/github.com/p0tat0/bigfloat?status.png)](https://godoc.org/github.com/p0tat0/bigfloat)
 

@@ -129,3 +129,17 @@ func TestLogExtremeExponent(t *testing.T) {
 		}
 	}
 }
+
+// TestLogSqrtBands: precisions where math/big's square root left the AGM's
+// difference above its limit, so the loop never ended.
+func TestLogSqrtBands(t *testing.T) {
+	for _, prec := range []uint{6600, 13300, 26700} {
+		for _, v := range []float64{0.25, 0.5} {
+			got := bigfloat.Log(new(big.Float).SetPrec(prec).SetFloat64(v))
+			want := bigfloat.Log(new(big.Float).SetPrec(prec + 1000).SetFloat64(v))
+			if d := ulpDistance(got, want.SetPrec(prec)); d > 1 {
+				t.Errorf("Log(%v) at %d bits: %.3g ulp off", v, prec, d)
+			}
+		}
+	}
+}
